@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="plugins/LinzSnap/" >
+    <file>LinzSnap.png</file>
+    <file>LinzSnapRefresh.png</file>
+    <file>LinzSnapInfo.png</file>
+  </qresource>
+</RCC>
