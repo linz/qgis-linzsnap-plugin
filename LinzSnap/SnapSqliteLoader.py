@@ -126,17 +126,23 @@ class SnapSqliteLoader:
                  else 'string'
                  for f in fields)
 
-        create = ('create table ' + table + '(' + ', '.join(
+        create = ('create table ' + table + '('
+            'uid INTEGER PRIMARY KEY, '
+            + ', '.join(
             [f+" "+t for f,t in zip(fields,types)]) +
-            ', primary key (' + fields[0] + '))')
+            ')')
 
-        insert = ('insert into ' + table + ' values ('
+        index='CREATE INDEX idx_{0}_{1} ON {0} ( {1} )'.format(table,fields[0])
+
+        insert = ('insert into ' + table 
+            + ' (' + ','.join(fields)+')'
+            + ' values ('
             + ', '.join(
             '?' if f != 'shape' else
             'GeomFromText(?,'+str(srid)+')'
             for f in fields) + ')')
 
-        return create, insert
+        return create, index, insert
     
     def _executeSql( self, db, sql, *values ):
         try:
@@ -149,8 +155,9 @@ class SnapSqliteLoader:
             raise Exception(message)
 
     def _createMetadataTable( self, job, db, csv ):
-        create, insert = self._buildSql('metadata',csv.fields(),'metadata')
+        create, index, insert = self._buildSql('metadata',csv.fields(),'metadata')
         self._executeSql(db,create)
+        self._executeSql(db,index)
         for row in csv:
             self._executeSql(db,insert,*row)
         self._setCsvMtime(job, db)
@@ -158,12 +165,13 @@ class SnapSqliteLoader:
     def _setCsvMtime( self, job, db ):
         mtime = self._snapCsvMtime( job )
         self._executeSql(db,"delete from metadata where code='CSVMTIME'")
-        self._executeSql(db,"insert into metadata values ('CSVMTIME',?,'SNAP metadata csv modification time')",
+        self._executeSql(db,"insert into metadata (code,value,comment) values ('CSVMTIME',?,'SNAP metadata csv modification time')",
                          mtime)
     
     def _createStationTable( self, db, csv, srid ):
-        create, insert = self._buildSql('stations',csv.fields(),'stn',srid)
+        create, index, insert = self._buildSql('stations',csv.fields(),'stn',srid)
         self._executeSql(db,create)
+        self._executeSql(db,index)
         for row in csv:
             self._executeSql(db,insert,*row)
     
@@ -172,8 +180,9 @@ class SnapSqliteLoader:
         fields.insert(0,'id')
         shapeid = fields.index('shape')
 
-        create, insert = self._buildSql('line_obs',fields,'obs',srid)
-        self._executeSql(db,create,)
+        create, index, insert = self._buildSql('line_obs',fields,'obs',srid)
+        self._executeSql(db,create)
+        self._executeSql(db,index)
         csv.reset()
         id = 0
         for row in csv:
@@ -181,8 +190,9 @@ class SnapSqliteLoader:
             row.insert(0,id)
             if 'LINE' in row[shapeid].upper(): self._executeSql(db,insert,*row)
 
-        create, insert = self._buildSql('point_obs',fields,'obs',srid)
-        self._executeSql(db,create,)
+        create, index, insert = self._buildSql('point_obs',fields,'obs',srid)
+        self._executeSql(db,create)
+        self._executeSql(db,index)
         csv.reset()
         id = 0
         for row in csv:

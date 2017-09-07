@@ -252,13 +252,13 @@ class LinzSnap:
             sqlitedb = self._loader.load(job)
             return True
         except:
+            errmsg=str(sys.exc_info()[1])
             job=re.sub(r'.*[\\\/]','',job)
             self._iface.messageBar().pushMessage(
                 "SNAP error",
-                "Error loading job " + job + ": " +
-                str(sys.exc_info()[1]),
+                "Error loading job " + job + ": " + errmsg,
                 level=QgsMessageBar.WARNING,
-                duration=10)
+                duration=20)
             return False
 
     def RefreshSnapJob( self, job ):
