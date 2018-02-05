@@ -1,6 +1,7 @@
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
 from qgis.core import *
 from qgis.gui import QgsMessageBar
 
@@ -11,7 +12,7 @@ import re
 import math
 from pyspatialite import dbapi2 as sqlite3
 
-from SnapSqliteLoader import SnapSqliteLoader;
+from .SnapSqliteLoader import SnapSqliteLoader;
 
 try:
     from VectorFieldRenderer.VectorFieldRenderer import VectorFieldRenderer
@@ -49,7 +50,7 @@ class LinzSnap:
         filename = QFileDialog.getOpenFileName(
             self._iface.mainWindow(),
             "SNAP command file", path, 
-            "Command files (*.cmd *.snp *.snap);;All files (*.*)")
+            "Command files (*.cmd *.snp *.snap);;All files (*.*)")[0]
         if filename:
             s.setValue(setting,QFileInfo(filename).absolutePath())
             job = self._snapFileJob( filename )

@@ -1,8 +1,9 @@
-from PyQt4.QtGui import *
-from PyQt4.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
 import os.path
 
-import Resources
+from . import Resources
 
 helpText = """
 Load a SNAP adjustment into QGIS.  The SNAP command file must include
@@ -27,7 +28,7 @@ class Plugin:
         self._watchers = []
 
     def initGui(self):
-        from LinzSnap import LinzSnap
+        from .LinzSnap import LinzSnap
 
         self._loader = LinzSnap(self._iface)
 
@@ -51,11 +52,9 @@ class Plugin:
         self._infoaction.setEnabled(False)
         self._infoaction.triggered.connect(self.showJobInfo)
 
-        QObject.connect(self._iface,SIGNAL("currentLayerChanged(QgsMapLayer*)"),
-            self.activeLayerChanged)
+        self._iface.currentLayerChanged[QgsMapLayer].connect(self.activeLayerChanged)
 
-        QObject.connect(QApplication.instance(),SIGNAL("focusChanged(QWidget *, QWidget *)"),
-            self.focusChanged)
+        QApplication.instance().focusChanged[QWidget, QWidget].connect(self.focusChanged)
 
         toolbar.addAction(self._loadaction)
         toolbar.addAction(self._infoaction)
@@ -66,10 +65,8 @@ class Plugin:
 
 
     def unload(self):      
-        QObject.disconnect(self._iface,SIGNAL("currentLayerChanged(QgsMapLayer*)"),
-            self.activeLayerChanged)
-        QObject.disconnect(QApplication.instance(),SIGNAL("focusChanged(QWidget *, QWidget *)"),
-            self.focusChanged)
+        self._iface.currentLayerChanged[QgsMapLayer].disconnect(self.activeLayerChanged)
+        QApplication.instance().focusChanged[QWidget, QWidget].disconnect(self.focusChanged)
         self._iface.removePluginMenu("&SNAP tools",self._loadaction)
         self._iface.removePluginMenu("&SNAP tools",self._infoaction)
         self._iface.removePluginMenu("&SNAP tools",self._refreshaction)

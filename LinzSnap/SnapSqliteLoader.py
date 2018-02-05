@@ -17,8 +17,8 @@ class SnapCsvFile:
         def __init__(self,filename):
             self._f=open(filename)
 
-        def next(self):
-            line=self._f.next()
+        def __next__(self):
+            line=next(self._f)
             line=re.sub(r'[\x80-\xff]','.',line)
             return line
 
@@ -28,11 +28,11 @@ class SnapCsvFile:
     def __init__(self,filename):
         self._filename = filename
         self._csv = csv.reader(self.cleanFile(filename))
-        self._fields = self._csv.next()
+        self._fields = next(self._csv)
 
     def reset(self):
         self._csv = csv.reader(open(self._filename))
-        self._csv.next()
+        next(self._csv)
 
     def fields(self):
         return self._fields
@@ -315,7 +315,7 @@ class SnapSqliteLoader:
     
             # Find and attach the coordsys ref database
             csysdb = os.path.realpath(inspect.getmodule(self).__file__);
-            print "module",inspect.getmodule(self).__file__;
+            print("module",inspect.getmodule(self).__file__);
             csysdb = re.sub(r'.[^\.]*$','.csys.db',csysdb)
             if not os.path.isfile(csysdb):
                 raise Exception("Coordsys reference db "+csysdb+" doesn't exist")
@@ -388,6 +388,6 @@ if __name__ == "__main__":
     try:
         loader = SnapSqliteLoader()
         sqlitefile = loader.load( sys.argv[1] )
-        print "Data loaded successfully into ",sqlitefile
+        print("Data loaded successfully into ",sqlitefile)
     except Exception:
-        print str(sys.exc_info()[1]),"\n"
+        print(str(sys.exc_info()[1]),"\n")
