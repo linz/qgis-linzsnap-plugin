@@ -242,7 +242,7 @@ class LinzSnap:
     def RefreshSnapLayers(self, job):
         refresh = False
         for layer, props in self._snapLayers(job):
-            layer.setCacheImage(None)
+            layer.triggerRepaint()
             refresh = True
         if refresh:
             self._iface.mapCanvas().refresh()

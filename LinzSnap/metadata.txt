@@ -7,9 +7,9 @@ about=Draws observations, stations, and adjustment vectors calculated
    This plugin uses the Vector Field Renderer plugin to draw adjustment
    vectors and error ellipses.
 category=Plugins
-version=1.2
+version=2.0
 experimental=False
-qgisMinimumVersion=2.0
+qgisMinimumVersion=3.0
 homepate=https://github.com/linz/qgis-linzsnap-plugin
 repository=https://github.com/linz/qgis-linzsnap-plugin
 tracker=https://github.com/linz/qgis-linzsnap-plugin/issues
