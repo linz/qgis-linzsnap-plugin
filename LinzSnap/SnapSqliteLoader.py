@@ -1,3 +1,5 @@
+#!/usr/bin/python
+#from __future__ import unicode_literals
 
 import re
 import os
@@ -177,27 +179,27 @@ class SnapSqliteLoader:
     
     def _createObsTables( self, db, csv, srid ):
         fields = csv.fields()[:]
-        fields.insert(0,'id')
+        fields.insert(0,'_csvid')
         shapeid = fields.index('shape')
 
         create, index, insert = self._buildSql('line_obs',fields,'obs',srid)
         self._executeSql(db,create)
         self._executeSql(db,index)
         csv.reset()
-        id = 0
+        csvid = 0
         for row in csv:
-            id += 1
-            row.insert(0,id)
+            csvid += 1
+            row.insert(0,csvid)
             if 'LINE' in row[shapeid].upper(): self._executeSql(db,insert,*row)
 
         create, index, insert = self._buildSql('point_obs',fields,'obs',srid)
         self._executeSql(db,create)
         self._executeSql(db,index)
         csv.reset()
-        id = 0
+        csvid = 0
         for row in csv:
-            id += 1
-            row.insert(0,str(id))
+            csvid += 1
+            row.insert(0,str(csvid))
             if 'POINT' in row[shapeid].upper(): self._executeSql(db,insert,*row)
 
     # Test existing sqlite metadata against new data.  Return True if
@@ -312,7 +314,8 @@ class SnapSqliteLoader:
                     return sqlitefile
     
             # Find and attach the coordsys ref database
-            csysdb = inspect.getmodule(self).__file__;
+            csysdb = os.path.realpath(inspect.getmodule(self).__file__);
+            print "module",inspect.getmodule(self).__file__;
             csysdb = re.sub(r'.[^\.]*$','.csys.db',csysdb)
             if not os.path.isfile(csysdb):
                 raise Exception("Coordsys reference db "+csysdb+" doesn't exist")
@@ -388,6 +391,3 @@ if __name__ == "__main__":
         print "Data loaded successfully into ",sqlitefile
     except Exception:
         print str(sys.exc_info()[1]),"\n"
-
-    
-        
