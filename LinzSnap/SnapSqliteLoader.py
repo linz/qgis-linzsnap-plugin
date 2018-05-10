@@ -46,7 +46,9 @@ class SnapSqliteLoader:
     '''
     Class to import data from SNAP CSV files into an SQLite database, 
     with spatial objects in tables stations, point_obs, line_obs.
-    Also creates a table 'metadata' with the metadata info.
+    Also creates a table 'metadata' with the metadata info and
+    a view 'observations' with all observations
+
     '''
 
 
@@ -201,6 +203,12 @@ class SnapSqliteLoader:
             csvid += 1
             row.insert(0,str(csvid))
             if 'POINT' in row[shapeid].upper(): self._executeSql(db,insert,*row)
+
+        fieldlist=','.join('"'+f+'"' for f in fields)
+        self._executeSql(db,"""
+             CREATE VIEW observations AS
+             SELECT {0} FROM line_obs UNION
+             SELECT {0} FROM point_obs""".format(fieldlist))
 
     # Test existing sqlite metadata against new data.  Return True if
     # if already loaded, False if not, raise exception if incompatible
