@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#from __future__ import unicode_literals
 
 import re
 import os
@@ -48,7 +46,6 @@ class SnapSqliteLoader:
     with spatial objects in tables stations, point_obs, line_obs.
     Also creates a table 'metadata' with the metadata info and
     a view 'observations' with all observations
-
     '''
 
 
@@ -203,7 +200,6 @@ class SnapSqliteLoader:
             csvid += 1
             row.insert(0,str(csvid))
             if 'POINT' in row[shapeid].upper(): self._executeSql(db,insert,*row)
-
         fieldlist=','.join('"'+f+'"' for f in fields)
         self._executeSql(db,"""
              CREATE VIEW observations AS
@@ -398,3 +394,6 @@ if __name__ == "__main__":
         print "Data loaded successfully into ",sqlitefile
     except Exception:
         print str(sys.exc_info()[1]),"\n"
+
+    
+        
