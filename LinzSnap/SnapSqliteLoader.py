@@ -338,9 +338,9 @@ class SnapSqliteLoader:
             if not row:
                 basecs=''
                 if re.match(r'_2\d{7}',csyscode[-9:]):
-                    basecs=cssyscode[:-9]
+                    basecs=csyscode[:-9]
                 elif re.match(r'\(2\d{7}\)',csyscode[-10:]):
-                    basecs=cssyscode[:-10]
+                    basecs=csyscode[:-10]
                 if basecs != '':
                     row = self._executeSql(db,"""
                         select s.srid 
