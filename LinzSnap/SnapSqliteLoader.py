@@ -324,22 +324,33 @@ class SnapSqliteLoader:
             if not os.path.isfile(csysdb):
                 raise Exception("Coordsys reference db "+csysdb+" doesn't exist")
             # srid = self._executeSQL
+            row=self._executeSql(db,"select value from metadata where code='CRDSYS'").fetchone()
+            csyscode=row[0] if row else 'undefined'
             self._executeSql(db,"attach database ? as csys",csysdb)
             row = self._executeSql(db,"""
                 select s.srid 
                 from csys.crs_epsg_srid_mapping c,
-                     csys.spatial_ref_sys s,
-                     metadata m
-                where m.code = 'CRDSYS'
-                and c.code=m.value
+                     csys.spatial_ref_sys s
+                where c.code=?
                 and s.auth_name='epsg'
                 and s.auth_srid=c.srid
-                """).fetchone()
+                """,csyscode).fetchone()
             if not row:
-                row = self._executeSql(db,"select value from metadata where code='CRDSYS'").fetchone()
-                csyscode = "undefined"
-                if row:
-                    csyscode = row[0]
+                basecs=''
+                if re.match(r'_2\d{7}',csyscode[-9:]):
+                    basecs=cssyscode[:-9]
+                elif re.match(r'\(2\d{7}\)',csyscode[-10:]):
+                    basecs=cssyscode[:-10]
+                if basecs != '':
+                    row = self._executeSql(db,"""
+                        select s.srid 
+                        from csys.crs_epsg_srid_mapping c,
+                             csys.spatial_ref_sys s
+                        where c.code=?
+                        and s.auth_name='epsg'
+                        and s.auth_srid=c.srid
+                        """,basecs).fetchone()
+            if not row:
                 raise Exception("SNAP coordinate system %s not supported"%(csyscode,))
             srid=row[0]
             
