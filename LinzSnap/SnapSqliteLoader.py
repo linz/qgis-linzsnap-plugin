@@ -65,15 +65,32 @@ class SnapSqliteLoader:
         errell_max
         errell_min
         errhgt
+        float_hor_err
+        float_vrt_err
+        float_de
+        float_dn
+        float_dh
+        float_errell_bmax
+        float_errell_max
+        float_errell_min
+        float_errhgt
+        float_hor_stdres
+        float_vrt_stdres
         error
         error1
         error2
         error3
+        ellheight
+        ellheight_init
         fromhgt
         height
+        height_init
+        geoidhgt
         latitude
+        latitude_init
         length
         longitude
+        longitude_init
         rescorr12
         rescorr13
         rescorr23
@@ -94,6 +111,8 @@ class SnapSqliteLoader:
         value1
         value2
         value3
+        xi
+        eta
         """.split()
 
     intfields="""
