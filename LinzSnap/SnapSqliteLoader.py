@@ -194,8 +194,12 @@ class SnapSqliteLoader:
         self._executeSql(db,create)
         self._executeSql(db,index)
         for row in csv:
+            row=self._blankAsNone(row)
             self._executeSql(db,insert,*row)
     
+    def _blankAsNone( self, row ):
+        return [None if r == "" else r for r in row]
+
     def _createObsTables( self, db, csv, srid ):
         fields = csv.fields()[:]
         fields.insert(0,'_csvid')
@@ -208,6 +212,7 @@ class SnapSqliteLoader:
         csvid = 0
         for row in csv:
             csvid += 1
+            row=self._blankAsNone(row)
             row.insert(0,csvid)
             if 'LINE' in row[shapeid].upper(): self._executeSql(db,insert,*row)
 
@@ -218,6 +223,7 @@ class SnapSqliteLoader:
         csvid = 0
         for row in csv:
             csvid += 1
+            row=self._blankAsNone(row)
             row.insert(0,str(csvid))
             if 'POINT' in row[shapeid].upper(): self._executeSql(db,insert,*row)
         fieldlist=','.join('"'+f+'"' for f in fields)
@@ -290,7 +296,7 @@ class SnapSqliteLoader:
         if 'CSVMTIME' not in meta: return False
         return meta['CSVMTIME']['value'] == mtime
 
-    def load( self, job ):
+    def load( self, job, overwrite=False ):
         try:
             csvfiles = self._files(job)
         except Exception:
@@ -300,11 +306,14 @@ class SnapSqliteLoader:
         sqlitefile = job+SnapSqliteLoader.sqliteext
         sqlitenew = sqlitefile
         if os.path.exists(sqlitefile):
-            if self.jobDatabaseIsCurrent(job):
-                return sqlitefile
-            for i in range(100):
-                sqlitenew = sqlitefile+'.'+str(i)+'.tmp'
-                if not os.path.exists(sqlitenew): break
+            if overwrite:
+                os.remove(sqlitefile)
+            else:
+                if self.jobDatabaseIsCurrent(job):
+                    return sqlitefile
+                for i in range(100):
+                    sqlitenew = sqlitefile+'.'+str(i)+'.tmp'
+                    if not os.path.exists(sqlitenew): break
 
         if os.path.exists(sqlitenew):
             os.remove(sqlitefile)
@@ -416,15 +425,19 @@ class SnapSqliteLoader:
 
         return sqlitefile
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.exit("Syntax: snap2sqlite  snap_command_file_name (no extension)\n")
-    try:
+    @staticmethod
+    def main():
+        import argparse
+        parser=argparse.ArgumentParser(description='Load SNAP ouput csv data into an sqlite database')
+        parser.add_argument('job_name',help='SNAP command file name (no extension)')
+        parser.add_argument('-o','--overwrite',action='store_true',help='Overwrite an existing Sqlite file')
+        args=parser.parse_args()
         loader = SnapSqliteLoader()
-        sqlitefile = loader.load( sys.argv[1] )
-        print "Data loaded successfully into ",sqlitefile
-    except Exception:
-        print str(sys.exc_info()[1]),"\n"
+        try:
+            sqlitefile = loader.load( args.job_name, overwrite=args.overwrite )
+            print "Data loaded successfully into ",sqlitefile
+        except Exception:
+            print str(sys.exc_info()[1]),"\n"
 
-    
-        
+if __name__ == "__main__":
+    SnapSqliteLoader.main()
