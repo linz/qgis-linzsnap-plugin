@@ -226,7 +226,7 @@ class SnapSqliteLoader:
             row=self._blankAsNone(row)
             row.insert(0,str(csvid))
             if 'POINT' in row[shapeid].upper(): self._executeSql(db,insert,*row)
-        fieldlist=','.join('"'+f+'"' for f in fields)
+        fieldlist=','.join('"'+f+'"' for f in fields if f != 'shape')
         self._executeSql(db,"""
              CREATE VIEW observations AS
              SELECT {0} FROM line_obs UNION
