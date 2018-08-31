@@ -64,6 +64,7 @@ class SnapSqliteLoader:
         errell_bmax
         errell_max
         errell_min
+        errfct
         errhgt
         float_hor_err
         float_vrt_err
@@ -116,6 +117,8 @@ class SnapSqliteLoader:
         """.split()
 
     intfields="""
+        snapid
+        srcid
         id
         obsset
         sourcelineno
@@ -202,7 +205,9 @@ class SnapSqliteLoader:
 
     def _createObsTables( self, db, csv, srid ):
         fields = csv.fields()[:]
-        fields.insert(0,'_csvid')
+        haveid='snapid' in fields
+        if not haveid:
+            fields.insert(0,'_csvid')
         shapeid = fields.index('shape')
 
         create, index, insert = self._buildSql('line_obs',fields,'obs',srid)
@@ -213,7 +218,8 @@ class SnapSqliteLoader:
         for row in csv:
             csvid += 1
             row=self._blankAsNone(row)
-            row.insert(0,csvid)
+            if not haveid:
+                row.insert(0,csvid)
             if 'LINE' in row[shapeid].upper(): self._executeSql(db,insert,*row)
 
         create, index, insert = self._buildSql('point_obs',fields,'obs',srid)
@@ -224,7 +230,8 @@ class SnapSqliteLoader:
         for row in csv:
             csvid += 1
             row=self._blankAsNone(row)
-            row.insert(0,str(csvid))
+            if not haveid:
+                row.insert(0,str(csvid))
             if 'POINT' in row[shapeid].upper(): self._executeSql(db,insert,*row)
         fieldlist=','.join('"'+f+'"' for f in fields if f != 'shape')
         self._executeSql(db,"""
