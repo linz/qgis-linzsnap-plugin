@@ -117,7 +117,7 @@ class SnapSqliteLoader:
         """.split()
 
     intfields="""
-        snapid
+        obsid
         srcid
         id
         obsset
