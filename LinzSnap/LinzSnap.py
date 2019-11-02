@@ -1,7 +1,11 @@
+from __future__ import absolute_import
+from builtins import str
+from builtins import object
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-from qgis.core import *
+from qgis.PyQt.QtCore import QFileInfo, QSettings
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtWidgets import QFileDialog
+from qgis.core import QgsDataSourceURI, QgsMapLayerRegistry, QgsVectorLayer
 from qgis.gui import QgsMessageBar
 
 from random import randint
@@ -11,7 +15,7 @@ import re
 import math
 from pyspatialite import dbapi2 as sqlite3
 
-from SnapSqliteLoader import SnapSqliteLoader;
+from .SnapSqliteLoader import SnapSqliteLoader;
 
 try:
     from VectorFieldRenderer.VectorFieldRenderer import VectorFieldRenderer
@@ -19,7 +23,7 @@ try:
 except ImportError:
     haveVFR=False
 
-class LinzSnap:
+class LinzSnap(object):
 
     _stnColor = QColor("red")
     _obsColor = QColor.fromRgb(127,127,127)
@@ -46,7 +50,7 @@ class LinzSnap:
         s = QSettings()
         setting = "/Plugin/LinzSnap/snapdir"
         path = s.value(setting,"./",str)
-        filename = QFileDialog.getOpenFileName(
+        filename, __, __ = QFileDialog.getOpenFileName(
             self._iface.mainWindow(),
             "SNAP command file", path, 
             "Command files (*.cmd *.snp *.snap);;All files (*.*)")

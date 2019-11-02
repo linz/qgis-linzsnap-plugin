@@ -1,8 +1,11 @@
-from PyQt4.QtGui import *
-from PyQt4.QtCore import *
+from __future__ import absolute_import
+from builtins import object
+from qgis.PyQt.QtWidgets import QAction, QWidget, QApplication, QMessageBox
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtCore import QObject
 import os.path
 
-import Resources
+from . import Resources
 
 helpText = """
 Load a SNAP adjustment into QGIS.  The SNAP command file must include
@@ -11,7 +14,7 @@ a command
 output_csv all wkt_shape no_tab_delimited
 """
 
-class Plugin:
+class Plugin(object):
 
     Name = "LinzSnap"
     LongName="SNAP data loader plugin"
@@ -27,7 +30,7 @@ class Plugin:
         self._watchers = []
 
     def initGui(self):
-        from LinzSnap import LinzSnap
+        from .LinzSnap import LinzSnap
 
         self._loader = LinzSnap(self._iface)
 
@@ -51,11 +54,9 @@ class Plugin:
         self._infoaction.setEnabled(False)
         self._infoaction.triggered.connect(self.showJobInfo)
 
-        QObject.connect(self._iface,SIGNAL("currentLayerChanged(QgsMapLayer*)"),
-            self.activeLayerChanged)
+        self._iface.currentLayerChanged.connect(self.activeLayerChanged)
 
-        QObject.connect(QApplication.instance(),SIGNAL("focusChanged(QWidget *, QWidget *)"),
-            self.focusChanged)
+        QApplication.instance().focusChanged.connect(self.focusChanged)
 
         toolbar.addAction(self._loadaction)
         toolbar.addAction(self._infoaction)
@@ -66,10 +67,8 @@ class Plugin:
 
 
     def unload(self):      
-        QObject.disconnect(self._iface,SIGNAL("currentLayerChanged(QgsMapLayer*)"),
-            self.activeLayerChanged)
-        QObject.disconnect(QApplication.instance(),SIGNAL("focusChanged(QWidget *, QWidget *)"),
-            self.focusChanged)
+        self._iface.currentLayerChanged.disconnect(self.activeLayerChanged)
+        QApplication.instance().focusChanged.disconnect(self.focusChanged)
         self._iface.removePluginMenu("&SNAP tools",self._loadaction)
         self._iface.removePluginMenu("&SNAP tools",self._infoaction)
         self._iface.removePluginMenu("&SNAP tools",self._refreshaction)

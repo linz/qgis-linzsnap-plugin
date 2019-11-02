@@ -1,3 +1,9 @@
+from __future__ import print_function
+from builtins import map
+from builtins import str
+from builtins import zip
+from builtins import range
+from builtins import object
 #!/usr/bin/python
 
 import re
@@ -9,7 +15,7 @@ import inspect
 from pyspatialite import dbapi2 as sqlite3
 from datetime import datetime
 
-class SnapCsvFile:
+class SnapCsvFile(object):
 
     class cleanFile( object ):
 
@@ -17,7 +23,7 @@ class SnapCsvFile:
             self._f=open(filename)
 
         def next(self):
-            line=self._f.next()
+            line=next(self._f)
             line=re.sub(r'[\x80-\xff]','.',line)
             return line
 
@@ -27,11 +33,11 @@ class SnapCsvFile:
     def __init__(self,filename):
         self._filename = filename
         self._csv = csv.reader(self.cleanFile(filename))
-        self._fields = self._csv.next()
+        self._fields = next(self._csv)
 
     def reset(self):
         self._csv = csv.reader(self.cleanFile(self._filename))
-        self._csv.next()
+        next(self._csv)
 
     def fields(self):
         return self._fields
@@ -40,7 +46,7 @@ class SnapCsvFile:
         return self._csv
 
 
-class SnapSqliteLoader:
+class SnapSqliteLoader(object):
 
     '''
     Class to import data from SNAP CSV files into an SQLite database, 
@@ -442,9 +448,11 @@ class SnapSqliteLoader:
         loader = SnapSqliteLoader()
         try:
             sqlitefile = loader.load( args.job_name, overwrite=args.overwrite )
-            print "Data loaded successfully into ",sqlitefile
+            # fix_print_with_import
+            print("Data loaded successfully into ",sqlitefile)
         except Exception:
-            print str(sys.exc_info()[1]),"\n"
+            # fix_print_with_import
+            print(str(sys.exc_info()[1]),"\n")
 
 if __name__ == "__main__":
     SnapSqliteLoader.main()
