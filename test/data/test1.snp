@@ -1,0 +1,30 @@
+title Regression test 1 - data types and observation equations
+
+coordinate_file test1.crd
+data_file test1.dat
+
+mode 3d adjustment
+convergence_tolerance 0.001
+
+fix 1
+
+list no_command_file
+list no_file_summary
+list no_input_data
+list no_problem_definition
+list no_observation_equations
+list solution_summary
+list station_coordinates
+list no_floated_stations
+list no_reference_frames
+list no_parameters
+list no_residuals
+list no_error_summary
+list no_worst_residuals
+output no_binary_file
+output no_coordinate_file
+
+output_csv metadata stations observations wkt_shape vector_components correlations
+
+
+

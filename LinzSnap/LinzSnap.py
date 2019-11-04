@@ -18,7 +18,7 @@ from pyspatialite import dbapi2 as sqlite3
 from .SnapSqliteLoader import SnapSqliteLoader;
 
 try:
-    from VectorFieldRenderer.VectorFieldRenderer import VectorFieldRenderer
+    from VectorFieldLayerManager import VectorFieldLayerManager
     haveVFR=True
 except ImportError:
     haveVFR=False
@@ -170,37 +170,26 @@ class LinzSnap(object):
 
         uri = self._layerUri(job,'stations')
         scale = -1
+        vfm=VectorFieldLayerManager(self._iface)
         legend = self._iface.legendInterface()
         if maxadjv > 0.0:
             adj_layer = QgsVectorLayer(uri, 'Vertical adjustments', 'spatialite')
             scale = self._calcAdjustmentLayerScale( adj_layer, maxvec, count )
             
-            r = VectorFieldRenderer()
-            r.setMode(2)
-            arrow = r.arrow()
-            color = self._vadjColor
-            arrow.setColor(color)
-            arrow.setHeadFillColor(color)
-            arrow.setBaseFillColor(color)
-            arrow.setBaseBorderColor(QColor("black"))
-            arrow.setEllipseBorderColor(color)
-            arrow.setFillEllipse(False)
-            arrow.setEllipseBorderWidth(0.0)
-            arrow.setEllipseTickSize(2.0)
-            arrow.setDrawEllipse(True)
-            arrow.setDrawEllipseAxes(False)
+            vfm.renderLayerAsVectorField(
+                adj_layer,
+                color=self._vadjColor,
+                baseBorderColor="#000000",
+                heightField='adj_h',
+                heightErrorField='errhgt',
+                scale=scale,
+                scaleGroup='adjustment',
+                ellipseScale=1.96
+            )
 
-            r.setScale(scale)
-            r.setScaleGroup('adjustment')
-            r.setLegendText('')
-            r.setScaleBoxText('m vrt adj (95% conf)')
-            r.setFields('adj_h','')
+            # r.setLegendText('')
+            # r.setScaleBoxText('m vrt adj (95% conf)')
 
-            r.setEllipseMode(r.HeightEllipse)
-            r.setEllipseFields('errhgt')
-            r.setEllipseScale(1.96)
-
-            r.applyToLayer(adj_layer)
             # adj_layer.setRendererV2(r)
             groupid=self._installLayer( adj_layer, groupid );
             legend.refreshLayerSymbology(adj_layer)
@@ -210,33 +199,23 @@ class LinzSnap(object):
             if scale < 0:
                 scale = self._calcAdjustmentLayerScale( adj_layer, maxvec, count )
 
-            r = VectorFieldRenderer()
-            arrow = r.arrow()
-            color = self._hadjColor
-            arrow.setColor(color)
-            arrow.setHeadFillColor(color)
-            arrow.setBaseFillColor(color)
-            arrow.setBaseBorderColor(QColor("black"))
-            arrow.setEllipseBorderColor(color)
-            arrow.setFillEllipse(False)
-            arrow.setEllipseBorderWidth(0.0)
-            arrow.setEllipseTickSize(2.0)
-            arrow.setDrawEllipse(True)
-            arrow.setDrawEllipseAxes(False)
+            vfm.renderLayerAsVectorField(
+                adj_layer,
+                color=self._hadjColor,
+                baseBorderColor="#000000",
+                dxField='adj_e',
+                dyField='adh_n',
+                emaxField='errell_max',
+                eminField='errell_min',
+                emaxAzimuthField='errell_bmax',
+                scale=scale,
+                scaleGroup='adjustment',
+                ellipseScale=2.45
+            )
 
-            r.setScale(scale)
-            r.setScaleGroup('adjustment')
-            r.setLegendText('')
-            r.setScaleBoxText('m hor adj (95% conf)')
-            r.setFields('adj_e','adj_n')
+            # r.setLegendText('')
+            # r.setScaleBoxText('m hor adj (95% conf)')
 
-            r.setEllipseMode(r.AxesEllipse)
-            r.setEllipseFields('errell_max','errell_min','errell_bmax')
-            r.setEllipseDegrees(True)
-            r.setEllipseAngleFromNorth(True)
-            r.setEllipseScale(2.45)
-
-            r.applyToLayer(adj_layer)
             groupid=self._installLayer( adj_layer, groupid );
             legend.refreshLayerSymbology(adj_layer)
 

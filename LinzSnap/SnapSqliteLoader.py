@@ -12,31 +12,18 @@ import os.path
 import csv
 import sys
 import inspect
-from pyspatialite import dbapi2 as sqlite3
+import sqlite3
 from datetime import datetime
 
 class SnapCsvFile(object):
 
-    class cleanFile( object ):
-
-        def __init__(self,filename):
-            self._f=open(filename)
-
-        def next(self):
-            line=next(self._f)
-            line=re.sub(r'[\x80-\xff]','.',line)
-            return line
-
-        def __iter__(self):
-            return self
-
     def __init__(self,filename):
         self._filename = filename
-        self._csv = csv.reader(self.cleanFile(filename))
+        self._csv = csv.reader(open(filename))
         self._fields = next(self._csv)
 
     def reset(self):
-        self._csv = csv.reader(self.cleanFile(self._filename))
+        self._csv = csv.reader(open(self._filename))
         next(self._csv)
 
     def fields(self):
@@ -131,6 +118,27 @@ class SnapSqliteLoader(object):
         """.split()
 
     sqliteext = ".sqlite"
+
+    def _connect(self,dbfile):
+        db=sqlite3.connect(dbfile)
+        if not self._enable_spatialite(db):
+            raise RuntimeError("Cannot loadspatialite")
+        return db
+
+    def _enable_spatialite( self,db ):
+        cu=db.cursor()
+        self._spatial=False
+        db.enable_load_extension(True)
+        ext='.dll' if os.name=='nt' else '.so'
+        for lib in ('mod_spatialite','spatialite'):
+            for libext in (ext,''):
+                try:
+                    cu.execute("SELECT load_extension('{0}{1}')".format(lib,libext)) 
+                    self._spatial=True
+                    return True
+                except sqlite3.OperationalError:
+                    pass
+        return False
 
     def _files( self, job ):
         csvfiles = dict()
@@ -296,7 +304,7 @@ class SnapSqliteLoader(object):
         cache = SnapSqliteLoader.jobmetacache
         if job in cache: return cache[job]
         try:
-            db = sqlite3.connect(job+SnapSqliteLoader.sqliteext)
+            db = self._connect(job+SnapSqliteLoader.sqliteext)
             return self._saveDbMeta( job, db )
         except:
             return None
@@ -313,6 +321,7 @@ class SnapSqliteLoader(object):
         try:
             csvfiles = self._files(job)
         except Exception:
+            raise
             raise Exception(str(sys.exc_info()[1])+
                 "\nThe SNAP command file must include \"output_csv all wkt_shape no_tab_delimited\"")
 
@@ -338,7 +347,7 @@ class SnapSqliteLoader(object):
         if job in SnapSqliteLoader.jobmetacache:
             del SnapSqliteLoader.jobmetacache[job]
 
-        db = sqlite3.connect(sqlitenew)
+        db = self._connect(sqlitenew)
         ok = False
         replacing = sqlitenew != sqlitefile
         try:
@@ -354,7 +363,7 @@ class SnapSqliteLoader(object):
                 self._executeSql(db,"attach '" + sqlitefile + "' as old")
                 if self._compareMetadata(db,sqlitefile):
                     db.close()
-                    db = sqlite3.connect(sqlitefile)
+                    db = self._connect(sqlitefile)
                     self._setCsvMtime( job, db )
                     db.commit()
                     return sqlitefile
@@ -424,7 +433,7 @@ class SnapSqliteLoader(object):
             db.commit()
             if replacing:
                 db.close()
-                db = sqlite3.connect(sqlitefile)
+                db = self._connect(sqlitefile)
 
             self._executeSql(db,'vacuum')
             self._executeSql(db,'analyze')
