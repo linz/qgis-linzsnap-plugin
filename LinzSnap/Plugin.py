@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from builtins import object
 from qgis.PyQt.QtWidgets import QAction, QWidget, QApplication, QMessageBox
 from qgis.PyQt.QtGui import QIcon
@@ -72,7 +71,7 @@ class Plugin(object):
         self._iface.removePluginMenu("&SNAP tools",self._loadaction)
         self._iface.removePluginMenu("&SNAP tools",self._infoaction)
         self._iface.removePluginMenu("&SNAP tools",self._refreshaction)
-        # self._iface.removeToolBar(self._toolbar) pass 
+        self._iface.mainWindow().removeToolBar(self._toolbar)
 
     def activeLayerChanged( self, layer ):
         self.enableActions()
@@ -130,9 +129,9 @@ class Plugin(object):
             info += ("\n\nThere is a more recent adjustment of this job\n" +
                     "Do you want to load it?")
             buttons |= QMessageBox.Cancel
-        result = QMessageBox.information(self._iface.mainWindow(),
-                    "Job information",
-                    info,buttons,QMessageBox.Ok)
+        messageBox = QMessageBox(QMessageBox.Information,
+            "Job information",info,buttons,self._iface.mainWindow())
+        result = messageBox.exec_()
         if result == QMessageBox.Ok and not iscurrent:
             self.refreshCurrentLayer()
 

@@ -1,24 +1,22 @@
-from __future__ import absolute_import
 from builtins import str
 from builtins import object
 
 from qgis.PyQt.QtCore import QFileInfo, QSettings
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtWidgets import QFileDialog
-from qgis.core import QgsDataSourceURI, QgsMapLayerRegistry, QgsVectorLayer
-from qgis.gui import QgsMessageBar
+from qgis.core import Qgis, QgsDataSourceUri, QgsProject, QgsVectorLayer
 
 from random import randint
 import sys
 import os.path
 import re
 import math
-from pyspatialite import dbapi2 as sqlite3
+import sqlite3
 
 from .SnapSqliteLoader import SnapSqliteLoader;
 
 try:
-    from VectorFieldLayerManager import VectorFieldLayerManager
+    from VectorFieldLayerManager.VectorFieldLayerManager import VectorFieldLayerManager
     haveVFR=True
 except ImportError:
     haveVFR=False
@@ -50,7 +48,7 @@ class LinzSnap(object):
         s = QSettings()
         setting = "/Plugin/LinzSnap/snapdir"
         path = s.value(setting,"./",str)
-        filename, __, __ = QFileDialog.getOpenFileName(
+        filename, __ = QFileDialog.getOpenFileName(
             self._iface.mainWindow(),
             "SNAP command file", path, 
             "Command files (*.cmd *.snp *.snap);;All files (*.*)")
@@ -60,7 +58,7 @@ class LinzSnap(object):
         return job
 
     def _snapLayers( self, job=None ):
-        for layer in self._iface.mapCanvas().layers():
+        for layer in QgsProject.instance().mapLayers().values():
             props = self._snapLayerProperties(layer)
             if props and (not job or props['job'] == job):
                 yield layer, props
@@ -68,7 +66,7 @@ class LinzSnap(object):
     def _providerJob( self, layer ):
         if layer.type() != layer.VectorLayer or layer.dataProvider().name() != "spatialite":
             return None
-        uri = QgsDataSourceURI(layer.dataProvider().dataSourceUri())
+        uri = QgsDataSourceUri(layer.dataProvider().dataSourceUri())
         db = str(uri.database())
         if db.lower().endswith(self._dbext):
             db = db[0:len(db)-len(self._dbext)]
@@ -102,87 +100,74 @@ class LinzSnap(object):
         groupname = re.sub(".*[\\\/]","",job)
         return legend.addGroup(groupname)
 
-    def _installLayer( self, layer, groupid=None ):
+    def _installLayer( self, layer, adjgroup=None ):
         if layer.featureCount() == 0:
             return groupid
-        legend = self._iface.legendInterface()
         lprops = self._setSnapLayerProperties( layer )
-        QgsMapLayerRegistry.instance().addMapLayer(layer)
-        if groupid is None:
-            groupid = self._groupId( lprops['job'])
-        legend.moveLayer(layer,groupid)
-        return groupid
+        QgsProject.instance().addMapLayer(layer,adjgroup is None)
+        if adjgroup:
+            adjgroup.insertLayer(0,layer)
 
     def _layerUri( self, job, table ):
-        uri = QgsDataSourceURI()
+        uri = QgsDataSourceUri()
         uri.setDatabase(job+self._dbext)
         uri.setDataSource('',table, 'shape')
         return uri.uri()
 
-    def CreateStationLayer( self, job, groupid=None ):
+    def _setLayerColor( self, layer, color ):
+        symbol=layer.renderer().symbol().clone()
+        symbol.setColor(color)
+        layer.renderer().setSymbol(symbol)
+
+    def CreateStationLayer( self, job, adjgroup=None ):
         uri = self._layerUri(job,'stations');
         layer = QgsVectorLayer(uri, 'Stations', 'spatialite')
-        layer.rendererV2().symbol().setColor(self._stnColor);
-        return self._installLayer( layer, groupid )
+        self._setLayerColor(layer,self._stnColor)
+        self._installLayer( layer, adjgroup )
+        return layer
 
-    def CreateLineObsLayer( self, job, groupid=None ):
+    def CreateLineObsLayer( self, job, adjgroup=None ):
         uri = self._layerUri(job,'line_obs');
         layer = QgsVectorLayer(uri, 'Line observations', 'spatialite')
-        layer.rendererV2().symbol().setColor(self._obsColor);
-        return self._installLayer( layer, groupid )
+        self._setLayerColor(layer,self._obsColor)
+        self._installLayer( layer, adjgroup )
+        return layer
 
-    def CreatePointObsLayer( self, job, groupid=None ):
+    def CreatePointObsLayer( self, job, adjgroup=None ):
         uri = self._layerUri(job,'point_obs');
         layer = QgsVectorLayer(uri, 'Point observations', 'spatialite')
-        layer.rendererV2().symbol().setColor(self._obsColor);
-        return self._installLayer( layer, groupid )
+        self._setLayerColor(layer,self._obsColor)
+        self._installLayer( layer, adjgroup )
+        return layer
 
-    def _calcAdjustmentLayerScale( self, layer, maxvec, count ):
-
-        scale = 1.0
-        arrlen = math.sqrt(maxvec/count)
-        arrlen *= min(1+count/20,2) 
-
-        maprenderer = self._iface.mapCanvas().mapRenderer()
-        extent = maprenderer.layerExtentToOutputExtent(layer,layer.extent())
-
-        mapsize = math.sqrt(abs(extent.width()*extent.height()))
-        maplen = mapsize/math.sqrt(16.0+count)
-        maplen = max(min(maplen,mapsize/10),mapsize/100)
-        scale = maplen
-
-        if arrlen > 0: scale /= arrlen
-        return scale
-
-    def CreateAdjustmentLayer( self, job, groupid=None ):
+    def CreateAdjustmentLayer( self, job, adjgroup=None ):
         if not haveVFR:
-            return groupid
+            print("Vector field layer manager not found")
+            return adjgroup
 
         db = sqlite3.connect(job+self._dbext)
-        count,maxadjh,maxadjv = db.execute("""
+        count,maxadjh,maxadjv = db.cursor().execute("""
              select count(*),sum(adj_e*adj_e+adj_n*adj_n), sum(adj_h*adj_h)
              from stations
              where abs(adj_e) > 0 or abs(adj_n) > 0 or abs(adj_h) > 0
              """).fetchone()
         if count == 0:
+            print("No vectors to plot")
             return
         maxvec = max(maxadjh,maxadjv)
 
         uri = self._layerUri(job,'stations')
-        scale = -1
         vfm=VectorFieldLayerManager(self._iface)
-        legend = self._iface.legendInterface()
+        scale_layer=None
         if maxadjv > 0.0:
             adj_layer = QgsVectorLayer(uri, 'Vertical adjustments', 'spatialite')
-            scale = self._calcAdjustmentLayerScale( adj_layer, maxvec, count )
-            
+            scale_layer=adj_layer
             vfm.renderLayerAsVectorField(
                 adj_layer,
                 color=self._vadjColor,
                 baseBorderColor="#000000",
                 heightField='adj_h',
                 heightErrorField='errhgt',
-                scale=scale,
                 scaleGroup='adjustment',
                 ellipseScale=1.96
             )
@@ -190,44 +175,48 @@ class LinzSnap(object):
             # r.setLegendText('')
             # r.setScaleBoxText('m vrt adj (95% conf)')
 
-            # adj_layer.setRendererV2(r)
-            groupid=self._installLayer( adj_layer, groupid );
-            legend.refreshLayerSymbology(adj_layer)
+            # adj_layer.setRenderer(r)
+            self._installLayer( adj_layer, adjgroup );
+            #legend.refreshLayerSymbology(adj_layer)
 
         if maxadjh > 0.0:
             adj_layer = QgsVectorLayer(uri, 'Horizontal adjustments', 'spatialite')
-            if scale < 0:
-                scale = self._calcAdjustmentLayerScale( adj_layer, maxvec, count )
+            #if scale < 0:
+            #    scale = self._calcAdjustmentLayerScale( adj_layer, maxvec, count )
+            scale_layer=adj_layer
 
             vfm.renderLayerAsVectorField(
                 adj_layer,
                 color=self._hadjColor,
                 baseBorderColor="#000000",
                 dxField='adj_e',
-                dyField='adh_n',
+                dyField='adj_n',
                 emaxField='errell_max',
                 eminField='errell_min',
                 emaxAzimuthField='errell_bmax',
-                scale=scale,
+                # scale=scale,
                 scaleGroup='adjustment',
-                ellipseScale=2.45
+                ellipseScale=2.45,
+                # autoscale=True
             )
 
             # r.setLegendText('')
             # r.setScaleBoxText('m hor adj (95% conf)')
 
-            groupid=self._installLayer( adj_layer, groupid );
-            legend.refreshLayerSymbology(adj_layer)
+            self._installLayer( adj_layer, adjgroup );
+            #legend.refreshLayerSymbology(adj_layer)
 
-        return groupid
+        if scale_layer:
+            vfm.autoscaleVectorLayer(scale_layer)
+        return scale_layer
 
     def RefreshSnapLayers(self, job):
-        refresh = False
         for layer, props in self._snapLayers(job):
-            layer.setCacheImage(None)
-            refresh = True
-        if refresh:
-            self._iface.mapCanvas().refresh()
+            layer.triggerRepaint()
+
+    def JobName( self, job ):
+        job=re.sub(r'.*[\\\/]','',job)
+        return job
 
     def LoadSnapFiles(self,job):
         # Convert the SNAP data to an sqlite database
@@ -236,11 +225,11 @@ class LinzSnap(object):
             return True
         except:
             errmsg=str(sys.exc_info()[1])
-            job=re.sub(r'.*[\\\/]','',job)
+            job=self.JobName(job)
             self._iface.messageBar().pushMessage(
                 "SNAP error",
                 "Error loading job " + job + ": " + errmsg,
-                level=QgsMessageBar.WARNING,
+                level=Qgis.Warning,
                 duration=20)
             return False
 
@@ -251,11 +240,20 @@ class LinzSnap(object):
     def LoadSnapJob( self, job ):
         if not self.LoadSnapFiles(job):
             return
-        groupid=None
-        groupid=self.CreateLineObsLayer(job,groupid)
-        groupid=self.CreatePointObsLayer(job,groupid)
-        groupid=self.CreateStationLayer(job,groupid)
-        groupid=self.CreateAdjustmentLayer(job,groupid)
+        initialLoad=len(QgsProject.instance().mapLayers()) == 0
+        rootNode=QgsProject.instance().layerTreeRoot()
+        jobname=self.JobName(job)
+        adjgroup=rootNode.insertGroup(0, f"Adjustment {jobname}")
+        linobslayer=self.CreateLineObsLayer(job,adjgroup)
+        pntobslayer=self.CreatePointObsLayer(job,adjgroup)
+        stnlayer=self.CreateStationLayer(job,adjgroup)
+        # Need to set the map extent if loading to empty map 
+        # else 
+        if initialLoad:
+            extent=stnlayer.extent()
+            extent.scale(1.1)
+            self._iface.mapCanvas().setExtent(extent)
+        adjlayer=self.CreateAdjustmentLayer(job,adjgroup)
 
     def DatabaseIsCurrent( self, job ):
         return self._loader.jobDatabaseIsCurrent( job )
