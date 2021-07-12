@@ -3,14 +3,15 @@ name=LinzSnap
 description=Plugin for displaying results from the LINZ SNAP program
 about=Draws observations, stations, and adjustment vectors calculated 
    using the Land Information New Zealand (LINZ) survey network adjustment
-   package SNAP.  SNAP is available at http://www.linz.govt.nz/data/geodetic-services/download-geodetic-software/snap-concord-downloads
-   This plugin uses the Vector Field Renderer plugin to draw adjustment
-   vectors and error ellipses.
+   package SNAP.  SNAP is available at https://www.geodesy.linz.govt.nz/download/snap.
+   This plugin requires both SQLite and the spatialite extension to be installed.
+   It uses the VectorFieldLayerManager QGIS plugin if it is installed 
+   to draw adjustment vectors and error ellipses.  
 category=Plugins
 version=1.5
 experimental=False
 qgisMinimumVersion=3.0
-homepate=https://github.com/linz/qgis-linzsnap-plugin
+homepage=https://github.com/linz/qgis-linzsnap-plugin
 repository=https://github.com/linz/qgis-linzsnap-plugin
 tracker=https://github.com/linz/qgis-linzsnap-plugin/issues
 author=Chris Crook
