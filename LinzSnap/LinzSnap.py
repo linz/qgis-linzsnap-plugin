@@ -102,7 +102,7 @@ class LinzSnap(object):
 
     def _installLayer( self, layer, adjgroup=None ):
         if layer.featureCount() == 0:
-            return groupid
+            return
         lprops = self._setSnapLayerProperties( layer )
         QgsProject.instance().addMapLayer(layer,adjgroup is None)
         if adjgroup:
