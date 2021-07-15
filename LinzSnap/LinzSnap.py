@@ -88,18 +88,6 @@ class LinzSnap(object):
         layer.setCustomProperty("SNAPLoader.isSnapJob","Y")
         return {'job': job }
 
-    def _groupId( self, job ):
-        legend = self._iface.legendInterface()
-        for layer, props in self._snapLayers(job):
-            groupids = [i 
-                    for i,x in enumerate(legend.groupLayerRelationship()) 
-                    if layer.id() in x[1]]
-            if len(groupids) > 0 and legend.groupExists(groupids[0]): 
-                return groupids[0]
-
-        groupname = re.sub(".*[\\\/]","",job)
-        return legend.addGroup(groupname)
-
     def _installLayer( self, layer, adjgroup=None ):
         if layer.featureCount() == 0:
             return
@@ -243,7 +231,10 @@ class LinzSnap(object):
         initialLoad=len(QgsProject.instance().mapLayers()) == 0
         rootNode=QgsProject.instance().layerTreeRoot()
         jobname=self.JobName(job)
-        adjgroup=rootNode.insertGroup(0, f"Adjustment {jobname}")
+        groupName=f"Adjustment {jobname}"
+        adjgroup=rootNode.findGroup(groupName)
+        if not adjgroup:
+            adjgroup=rootNode.insertGroup(0, groupName)
         linobslayer=self.CreateLineObsLayer(job,adjgroup)
         pntobslayer=self.CreatePointObsLayer(job,adjgroup)
         stnlayer=self.CreateStationLayer(job,adjgroup)
